@@ -6,6 +6,7 @@ import android.graphics.Color;
 import android.os.Bundle;
 import android.text.Html;
 import android.text.method.LinkMovementMethod;
+import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -14,175 +15,90 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.TileOverlay;
 import com.google.android.gms.maps.model.TileOverlayOptions;
 import com.google.maps.android.heatmaps.Gradient;
 import com.google.maps.android.heatmaps.HeatmapTileProvider;
+import com.google.maps.android.heatmaps.WeightedLatLng;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Scanner;
 
 
-public class MainActivity extends AppCompatActivity {
-
-    private static final int ALT_HEATMAP_RADIUS = 10;
-
-    /**
-     * Alternative opacity of heatmap overlay
-     */
-    private static final double ALT_HEATMAP_OPACITY = 0.4;
-
-    /**
-     * Alternative heatmap gradient (blue -> red)
-     * Copied from Javascript version
-     */
-    private static final int[] ALT_HEATMAP_GRADIENT_COLORS = {
-            Color.argb(0, 0, 255, 255),// transparent
-            Color.argb(255 / 3 * 2, 0, 255, 255),
-            Color.rgb(0, 191, 255),
-            Color.rgb(0, 0, 127),
-            Color.rgb(255, 0, 0)
-    };
-
-    public static final float[] ALT_HEATMAP_GRADIENT_START_POINTS = {
-            0.0f, 0.10f, 0.20f, 0.60f, 1.0f
-    };
-
-    public static final Gradient ALT_HEATMAP_GRADIENT = new Gradient(ALT_HEATMAP_GRADIENT_COLORS,
-            ALT_HEATMAP_GRADIENT_START_POINTS);
-
-    private HeatmapTileProvider mProvider;
-    private TileOverlay mOverlay;
-
-    private boolean mDefaultGradient = true;
-    private boolean mDefaultRadius = true;
-    private boolean mDefaultOpacity = true;
-
-    /**
-     * Maps name of data set to data (list of LatLngs)
-     * Also maps to the URL of the data set for attribution
-     */
-    private HashMap<String, DataSet> mLists = new HashMap<>();
+public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
 
     @Override
-    protected int getLayoutId() {
-        return R.layout.activity_main;
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+
+        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
+        mapFragment.getMapAsync(this);
     }
 
     @Override
-    protected void startDemo(boolean isRestore) {
-        /*if (!isRestore) {
-            getMap().moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(-25, 143), 4));
-        }*/
+    public void onMapReady(GoogleMap googleMap) {
+        ArrayList<WeightedLatLng> data = null;
         try {
-            mLists.put("Sensor", new DataSet(readItems(R.raw.coordinates),
-                    getString(R.string.police_stations_url)));
+            data = generateHeatMapData();
         } catch (JSONException e) {
-            Toast.makeText(this, "Problem reading list of markers.", Toast.LENGTH_LONG).show();
+            throw new RuntimeException(e);
         }
 
+        HeatmapTileProvider heatMapProvider = new HeatmapTileProvider.Builder()
+                .weightedData(data) // load our weighted data
+                .radius(50) // optional, in pixels, can be anything between 20 and 50
+                .maxIntensity(1000.0) // set the maximum intensity
+                .build();
+
+        googleMap.addTileOverlay(new TileOverlayOptions().tileProvider(heatMapProvider));
+
+        LatLng indiaLatLng = new LatLng(20.5937, 78.9629);
+        googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(indiaLatLng, 5f));
     }
 
-    public void changeRadius(View view) {
-        if (mDefaultRadius) {
-            mProvider.setRadius(ALT_HEATMAP_RADIUS);
-        } else {
-            mProvider.setRadius(HeatmapTileProvider.DEFAULT_RADIUS);
-        }
-        mOverlay.clearTileCache();
-        mDefaultRadius = !mDefaultRadius;
-    }
+    private ArrayList<WeightedLatLng> generateHeatMapData() throws JSONException {
+        ArrayList<WeightedLatLng> data = new ArrayList<>();
 
-    public void changeGradient(View view) {
-        if (mDefaultGradient) {
-            mProvider.setGradient(ALT_HEATMAP_GRADIENT);
-        } else {
-            mProvider.setGradient(HeatmapTileProvider.DEFAULT_GRADIENT);
-        }
-        mOverlay.clearTileCache();
-        mDefaultGradient = !mDefaultGradient;
-    }
+        JSONArray jsonData = getJsonDataFromAsset();
+        if (jsonData != null) {
+            try {
+                for (int i = 0; i < jsonData.length(); i++) {
+                    JSONObject entry = jsonData.getJSONObject(i);
+                    double lat = entry.getDouble("lat");
+                    double lon = entry.getDouble("lon");
+                    double density = entry.getDouble("density");
 
-    public void changeOpacity(View view) {
-        if (mDefaultOpacity) {
-            mProvider.setOpacity(ALT_HEATMAP_OPACITY);
-        } else {
-            mProvider.setOpacity(HeatmapTileProvider.DEFAULT_OPACITY);
-        }
-        mOverlay.clearTileCache();
-        mDefaultOpacity = !mDefaultOpacity;
-    }
-
-    // Dealing with spinner choices
-    public class SpinnerActivity implements AdapterView.OnItemSelectedListener {
-        public void onItemSelected(AdapterView<?> parent, View view,
-                                   int pos, long id) {
-            String dataset = parent.getItemAtPosition(pos).toString();
-
-            // Check if need to instantiate (avoid setData etc twice)
-            if (mProvider == null) {
-                mProvider = new HeatmapTileProvider.Builder().data(
-                        mLists.get(getString(R.string.police_stations)).getData()).build();
-                mOverlay = getMap().addTileOverlay(new TileOverlayOptions().tileProvider(mProvider));
-                // Render links
-                attribution.setMovementMethod(LinkMovementMethod.getInstance());
-            } else {
-                mProvider.setData(mLists.get(dataset).getData());
-                mOverlay.clearTileCache();
+                    if (density != 0.0) {
+                        WeightedLatLng weightedLatLng = new WeightedLatLng(new LatLng(lat, lon), density);
+                        data.add(weightedLatLng);
+                    }
+                }
+            } catch (JSONException e) {
+                e.printStackTrace();
             }
-            // Update attribution
-            attribution.setText(Html.fromHtml(String.format(getString(R.string.attrib_format),
-                    mLists.get(dataset).getUrl())));
-
         }
-
-        public void onNothingSelected(AdapterView<?> parent) {
-            // Another interface callback
-        }
+        Log.d("Data", data.get(0).toString());
+        return data;
     }
 
-    // Datasets from http://data.gov.au
-    private ArrayList<LatLng> readItems(int resource) throws JSONException {
-        ArrayList<LatLng> list = new ArrayList<>();
-        InputStream inputStream = getResources().openRawResource(resource);
+    private JSONArray getJsonDataFromAsset() throws JSONException {
+        InputStream inputStream = getResources().openRawResource(R.raw.coordinates);
         String json = new Scanner(inputStream).useDelimiter("\\A").next();
         JSONArray array = new JSONArray(json);
-        for (int i = 0; i < array.length(); i++) {
-            JSONObject object = array.getJSONObject(i);
-            double lat = object.getDouble("lat");
-            double lng = object.getDouble("lng");
-            list.add(new LatLng(lat, lng));
-        }
-        return list;
-    }
-
-    /**
-     * Helper class - stores data sets and sources.
-     */
-    private class DataSet {
-        private ArrayList<LatLng> mDataset;
-        private String mUrl;
-
-        public DataSet(ArrayList<LatLng> dataSet, String url) {
-            this.mDataset = dataSet;
-            this.mUrl = url;
-        }
-
-        public ArrayList<LatLng> getData() {
-            return mDataset;
-        }
-
-        public String getUrl() {
-            return mUrl;
-        }
+        return array;
     }
 }
 
