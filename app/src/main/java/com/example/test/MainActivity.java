@@ -3,6 +3,10 @@ package com.example.test;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.graphics.Color;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.text.Html;
 import android.text.method.LinkMovementMethod;
@@ -37,7 +41,8 @@ import java.util.HashMap;
 import java.util.Scanner;
 
 
-public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
+public class MainActivity extends AppCompatActivity implements OnMapReadyCallback, SensorEventListener {
+    SensorManager sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -99,6 +104,30 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         String json = new Scanner(inputStream).useDelimiter("\\A").next();
         JSONArray array = new JSONArray(json);
         return array;
+    }
+    private void sensors(){
+        SensorManager sensorManager;
+
+        sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
+        Sensor defaultACCELEROMETER = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+        sensorManager.registerListener(this,
+                defaultACCELEROMETER,
+                SensorManager.SENSOR_DELAY_NORMAL);
+    }
+    protected void onResume() {
+        super.onResume();
+        sensors();
+    }
+
+    protected void onPause() {
+        super.onPause();
+        sensorManager.unregisterListener(this);
+    }
+
+    public void onAccuracyChanged(Sensor sensor, int accuracy) {
+    }
+
+    public void onSensorChanged(SensorEvent event) {
     }
 }
 

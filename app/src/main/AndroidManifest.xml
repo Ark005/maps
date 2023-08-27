@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
+    <uses-permission android:name="Manifest.permission.HIGH_SAMPLING_RATE_SENSORS"/>
 
     <application
         android:allowBackup="true"
@@ -15,9 +16,7 @@
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="AIzaSyDl0pxgzJF3bKXGosoXllzFmq6gcuEtO3k" />
-        <activity
-            android:name=".MainActivity2"
-            android:exported="false" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true">
