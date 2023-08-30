@@ -140,6 +140,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     protected void onPause() {
         super.onPause();
         sensorManager.unregisterListener(this);
+        locationManager.removeUpdates(this);
     }
 
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
@@ -152,15 +153,18 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             double z = event.values[2];
 
             double density = (double) Math.toDegrees(Math.acos(z / Math.sqrt(x * x + y * y + z * z)));
+
+            addData("Accelerometer", 1, x, y, z, density);
         } else if (event.sensor.getType() == Sensor.TYPE_GYROSCOPE) {
             ///
         }
     }
 
     // JSON methods
-    public void addData(String sensor, double time, double x, double y, double z, double density) {
-        Data currentData = new Data(sensor, time, x, y, z, density);
+    public void addData(String sensor, double time, double lat, double lon, double z, double density) {
+        Data currentData = new Data(sensor, time, lat, lon, z, density);
         dataToJSON.add(currentData);
+        Log.d("TagData", currentData.toString());
     }
     public void saveData() {
         boolean result = JSONHelper.exportToJSON(this, dataToJSON);

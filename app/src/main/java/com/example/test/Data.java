@@ -3,17 +3,17 @@ package com.example.test;
 public class Data {
     private String sensor;
     private double time;
-    private double x;
-    private double y;
+    private double lat;
+    private double lon;
     private double z;
     private double density;
 
 
-    public Data (String sensor,double time,double x,double y,double z, double density){
+    public Data (String sensor,double time,double lat,double lon,double z, double density){
         this.sensor=sensor;
         this.time=time;
-        this.x=x;
-        this.y=y;
+        this.lat=lat;
+        this.lon=lon;
         this.z=z;
         this.density = density;
     }
@@ -23,11 +23,11 @@ public class Data {
     public double getTime(){
         return time;
     }
-    public double getX(){
-        return x;
+    public double getLat(){
+        return lat;
     }
-    public double getY(){
-        return y;
+    public double getLon(){
+        return lon;
     }
     public double getZ(){
         return z;
@@ -38,11 +38,11 @@ public class Data {
     public void setTime(double time){
         this.time=time;
     }
-    public void setX(double x){
-        this.x=x;
+    public void setLat(double lat){
+        this.lat=lat;
     }
-    public void setY(double y){
-        this.y=y;
+    public void setLon(double lon){
+        this.lon=lon;
     }
     public void setZ(double z){
         this.z=z;
