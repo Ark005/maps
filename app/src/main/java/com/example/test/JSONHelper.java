@@ -8,8 +8,8 @@ import java.io.FileOutputStream;
 import java.util.List;
 
 public class JSONHelper {
-    private final static String FILE_NAME = "coordinates.json";
-    private static boolean exportToJSON(Context context, List<Data> dataList){
+    public final static String FILE_NAME = "coordinates.json";
+    public static boolean exportToJSON(Context context, List<Data> dataList){
         Gson gson = new Gson();
         DataItems dataItems = new DataItems();
         dataItems.setData(dataList);

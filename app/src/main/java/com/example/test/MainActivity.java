@@ -1,12 +1,19 @@
 package com.example.test;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
 
+import android.Manifest;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
 import android.os.Bundle;
 import android.text.Html;
 import android.text.method.LinkMovementMethod;
@@ -42,8 +49,9 @@ import java.util.List;
 import java.util.Scanner;
 
 
-public class MainActivity extends AppCompatActivity implements OnMapReadyCallback, SensorEventListener {
+public class MainActivity extends AppCompatActivity implements OnMapReadyCallback, SensorEventListener, LocationListener {
     SensorManager sensorManager;
+    LocationManager locationManager;
     List<Data> dataToJSON;
 
     @Override
@@ -51,6 +59,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
+        locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
         dataToJSON =  new ArrayList<>();
@@ -123,6 +132,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     protected void onResume() {
         super.onResume();
         sensors();
+        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, this);
+        }
     }
 
     protected void onPause() {
@@ -134,11 +146,37 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     public void onSensorChanged(SensorEvent event) {
+        if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
+            double x = event.values[0];
+            double y = event.values[1];
+            double z = event.values[2];
+
+            double density = (double) Math.toDegrees(Math.acos(z / Math.sqrt(x * x + y * y + z * z)));
+        } else if (event.sensor.getType() == Sensor.TYPE_GYROSCOPE) {
+            ///
+        }
     }
 
     // JSON methods
-    public void addData()
+    public void addData(String sensor, double time, double x, double y, double z, double density) {
+        Data currentData = new Data(sensor, time, x, y, z, density);
+        dataToJSON.add(currentData);
+    }
+    public void saveData() {
+        boolean result = JSONHelper.exportToJSON(this, dataToJSON);
+        if (result) {
+            Toast.makeText(this, "Данные сохранены", Toast.LENGTH_LONG).show();
+        } else {
+            Toast.makeText(this, "Данные не сохранены", Toast.LENGTH_LONG).show();
+        }
+    }
 
+
+    @Override
+    public void onLocationChanged(@NonNull Location location) {
+        double lat = location.getLatitude();
+        double lon = location.getLongitude();
+    }
 }
 
 

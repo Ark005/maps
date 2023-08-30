@@ -6,15 +6,16 @@ public class Data {
     private double x;
     private double y;
     private double z;
+    private double density;
 
 
-
-    public Data (String sensor,double time,double x,double y,double z){
+    public Data (String sensor,double time,double x,double y,double z, double density){
         this.sensor=sensor;
         this.time=time;
         this.x=x;
         this.y=y;
         this.z=z;
+        this.density = density;
     }
     public String getSensor(){
         return sensor;
@@ -45,5 +46,13 @@ public class Data {
     }
     public void setZ(double z){
         this.z=z;
+    }
+
+    public double getDensity() {
+        return density;
+    }
+
+    public void setDensity(double density) {
+        this.density = density;
     }
 }
