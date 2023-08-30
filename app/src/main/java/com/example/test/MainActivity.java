@@ -38,21 +38,26 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Scanner;
 
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback, SensorEventListener {
-    SensorManager sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
+    SensorManager sensorManager;
+    List<Data> dataToJSON;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
+        sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
+        dataToJSON =  new ArrayList<>();
+
     }
 
+    // Map methods
     @Override
     public void onMapReady(GoogleMap googleMap) {
         ArrayList<WeightedLatLng> data = null;
@@ -105,6 +110,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         JSONArray array = new JSONArray(json);
         return array;
     }
+    // Sensor methods
     private void sensors(){
         SensorManager sensorManager;
 
@@ -129,6 +135,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     public void onSensorChanged(SensorEvent event) {
     }
+
+    // JSON methods
+    public void addData()
+
 }
 
 
