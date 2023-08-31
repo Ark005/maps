@@ -21,12 +21,14 @@ import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.ListView;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.MapFragment;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
@@ -53,6 +55,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     SensorManager sensorManager;
     LocationManager locationManager;
     List<Data> dataToJSON;
+    private ArrayAdapter<Data> adapter;
+    ListView listView;
+    List<Data> items;
+    GoogleMap ourMap;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -63,12 +69,17 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
         dataToJSON =  new ArrayList<>();
+        items = new ArrayList<>();
+        listView = findViewById(R.id.list);
+        adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, items);
+        listView.setAdapter(adapter);
 
     }
 
     // Map methods
     @Override
     public void onMapReady(GoogleMap googleMap) {
+        ourMap = googleMap;
         ArrayList<WeightedLatLng> data = null;
         try {
             data = generateHeatMapData();
@@ -84,13 +95,27 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         googleMap.addTileOverlay(new TileOverlayOptions().tileProvider(heatMapProvider));
 
-        LatLng indiaLatLng = new LatLng(20.5937, 78.9629);
+        LatLng indiaLatLng = new LatLng(55, 37);
         googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(indiaLatLng, 5f));
+    }
+    public void onMapUpdate() {
+        ArrayList<WeightedLatLng> data = null;
+        try {
+            data = generateHeatMapData();
+        } catch (JSONException e) {
+            throw new RuntimeException(e);
+        }
+        HeatmapTileProvider heatMapProvider = new HeatmapTileProvider.Builder()
+                .weightedData(data) // load our weighted data
+                .radius(50) // optional, in pixels, can be anything between 20 and 50
+                .maxIntensity(1000.0) // set the maximum intensity
+                .build();
+
+        ourMap.addTileOverlay(new TileOverlayOptions().tileProvider(heatMapProvider));
     }
 
     private ArrayList<WeightedLatLng> generateHeatMapData() throws JSONException {
         ArrayList<WeightedLatLng> data = new ArrayList<>();
-
         JSONArray jsonData = getJsonDataFromAsset();
         if (jsonData != null) {
             try {
@@ -114,7 +139,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     private JSONArray getJsonDataFromAsset() throws JSONException {
-        InputStream inputStream = getResources().openRawResource(R.raw.coordinates);
+        InputStream inputStream = getResources().openRawResource(R.raw.data);
         String json = new Scanner(inputStream).useDelimiter("\\A").next();
         JSONArray array = new JSONArray(json);
         return array;
@@ -155,6 +180,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             double density = (double) Math.toDegrees(Math.acos(z / Math.sqrt(x * x + y * y + z * z)));
 
             addData("Accelerometer", 1, x, y, z, density);
+            saveData();
+            //Toast.makeText(this, "Данные обновлены", Toast.LENGTH_LONG).show();
         } else if (event.sensor.getType() == Sensor.TYPE_GYROSCOPE) {
             ///
         }
@@ -165,13 +192,28 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         Data currentData = new Data(sensor, time, lat, lon, z, density);
         dataToJSON.add(currentData);
         Log.d("TagData", currentData.toString());
+        saveData();
+        onMapUpdate();
+        adapter.notifyDataSetChanged();
+        open();
     }
     public void saveData() {
         boolean result = JSONHelper.exportToJSON(this, dataToJSON);
-        if (result) {
+        /*if (result) {
             Toast.makeText(this, "Данные сохранены", Toast.LENGTH_LONG).show();
         } else {
             Toast.makeText(this, "Данные не сохранены", Toast.LENGTH_LONG).show();
+        }*/
+    }
+    public void open(){
+        items = JSONHelper.importFromJSON(this);
+        if(items!=null){
+            adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, items);
+            listView.setAdapter(adapter);
+            //Toast.makeText(this, "Данные восстановлены", Toast.LENGTH_LONG).show();
+        }
+        else{
+            //Toast.makeText(this, "Не удалось открыть данные", Toast.LENGTH_LONG).show();
         }
     }
 

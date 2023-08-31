@@ -50,4 +50,9 @@
         android:layout_weight="1"
         android:name="com.google.android.gms.maps.SupportMapFragment" />
 
+    <ListView
+        android:id="@+id/list"
+        android:layout_width="1dp"
+        android:layout_height="match_parent" />
+
 </LinearLayout>
